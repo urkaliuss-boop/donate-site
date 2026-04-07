@@ -19,7 +19,7 @@ export default function HomePage() {
           transition={{ delay: 0.1 }}
           className="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 leading-tight"
         >
-          Добро пожаловать в{' '}
+          Добро пожаловать на{' '}
           <span className="gradient-text">FUNCLUB</span>
         </motion.h1>
 
@@ -29,7 +29,7 @@ export default function HomePage() {
           transition={{ delay: 0.2 }}
           className="text-text-secondary text-lg sm:text-xl max-w-2xl mb-12 leading-relaxed"
         >
-          Официальная платформа для покупки привилегий, валюты и уникальных предметов
+          Официальная платформа для покупки привилегий
           на наших игровых серверах.
         </motion.p>
 
