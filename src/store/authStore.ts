@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   avatar?: string;
+  role?: string;
 }
 
 interface AuthStore {
@@ -22,55 +23,64 @@ export const useAuthStore = create<AuthStore>((set) => ({
   loading: true,
 
   loadUser: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-      set({
-        user: profile
-          ? { id: profile.id, name: profile.name, email: profile.email, avatar: profile.avatar }
-          : null,
-        loading: false,
-      });
-    } else {
+    try {
+      const storedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('access_token');
+      if (storedUser && token) {
+        set({ user: JSON.parse(storedUser), loading: false });
+      } else {
+        set({ user: null, loading: false });
+      }
+    } catch {
       set({ user: null, loading: false });
     }
   },
 
   signIn: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return error.message;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-    set({
-      user: profile
-        ? { id: profile.id, name: profile.name, email: profile.email, avatar: profile.avatar }
-        : { id: data.user.id, name: email.split('@')[0], email },
-    });
-    return null;
+    try {
+      const data = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      localStorage.setItem('access_token', data.access_token);
+      const userPayload = {
+        id: data.user.id,
+        name: data.user.username || email.split('@')[0],
+        email: data.user.email,
+        role: data.user.role
+      };
+      localStorage.setItem('user', JSON.stringify(userPayload));
+      set({ user: userPayload });
+      return null;
+    } catch (error: any) {
+      return error.message;
+    }
   },
 
   signUp: async (name, email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
-    });
-    if (error) return error.message;
-    if (data.user) {
-      set({ user: { id: data.user.id, name, email } });
+    try {
+      const data = await apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, username: name }),
+      });
+      localStorage.setItem('access_token', data.access_token);
+      const userPayload = {
+        id: data.user.id,
+        name,
+        email: data.user.email,
+        role: data.user.role
+      };
+      localStorage.setItem('user', JSON.stringify(userPayload));
+      set({ user: userPayload });
+      return null;
+    } catch (error: any) {
+      return error.message;
     }
-    return null;
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
     set({ user: null });
   },
 }));

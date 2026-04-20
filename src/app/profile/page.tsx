@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LogOut, User, ShoppingBag, Calendar, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiFetch } from '@/lib/api';
 import Button from '@/components/ui/Button';
 
 interface Purchase {
@@ -30,29 +30,22 @@ export default function ProfilePage() {
     async function fetchPurchases() {
       if (!user) return;
       setLoadingPurchases(true);
-      const { data } = await supabase
-        .from('purchases')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      setPurchases(data || []);
+      try {
+        const data = await apiFetch('/purchases');
+        const formatted = data.map((p: any) => ({
+          id: p.id,
+          product_name: p.product?.name || 'Неизвестный товар',
+          amount: p.product?.priceCents ? p.product.priceCents / 100 : 0,
+          status: 'completed',
+          created_at: p.createdAt
+        }));
+        setPurchases(formatted);
+      } catch (e) {
+        console.error(e);
+      }
       setLoadingPurchases(false);
     }
     fetchPurchases();
-
-    // Realtime subscription
-    if (user) {
-      const channel = supabase
-        .channel('purchases-realtime')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'purchases', filter: `user_id=eq.${user.id}` },
-          () => { fetchPurchases(); }
-        )
-        .subscribe();
-
-      return () => { supabase.removeChannel(channel); };
-    }
   }, [user]);
 
   if (loading || !user) return null;

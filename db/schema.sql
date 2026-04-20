@@ -80,3 +80,13 @@ CREATE TABLE public.user_purchases (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 CREATE TRIGGER update_user_purchases_updated_at BEFORE UPDATE ON public.user_purchases FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- ИНДЕКСЫ ДЛЯ ОПТИМИЗАЦИИ (Foreign Keys и частые фильтры)
+CREATE INDEX idx_users_email ON public.users(email);
+CREATE INDEX idx_transactions_user_id ON public.transactions(user_id);
+CREATE INDEX idx_transactions_status ON public.transactions(status);
+CREATE INDEX idx_transaction_items_transaction_id ON public.transaction_items(transaction_id);
+CREATE INDEX idx_transaction_items_product_id ON public.transaction_items(product_id);
+CREATE INDEX idx_user_purchases_user_id ON public.user_purchases(user_id);
+CREATE INDEX idx_user_purchases_product_id ON public.user_purchases(product_id);
+CREATE INDEX idx_user_purchases_is_active_expires_at ON public.user_purchases(is_active, expires_at);

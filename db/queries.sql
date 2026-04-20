@@ -30,8 +30,8 @@ VALUES (
 
 INSERT INTO public.transaction_items (transaction_id, product_id, price_cents, quantity)
 VALUES (
-    (SELECT id FROM public.transactions WHERE status = 'pending' LIMIT 1),
-    (SELECT id FROM public.products WHERE name = 'PLATINUM PATRON'),
+    (SELECT id FROM public.transactions WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1),
+    (SELECT id FROM public.products WHERE name = 'PLATINUM PATRON' LIMIT 1),
     35000,
     1
 );
@@ -39,7 +39,7 @@ VALUES (
 
 UPDATE public.transactions 
 SET status = 'completed', updated_at = NOW()
-WHERE id = (SELECT id FROM public.transactions WHERE status = 'pending' LIMIT 1);
+WHERE id = (SELECT id FROM public.transactions WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1);
 
 
 INSERT INTO public.user_purchases (user_id, product_id, transaction_id, starts_at, expires_at)

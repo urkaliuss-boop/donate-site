@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum TransactionStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+model User {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  steamId       String?        @unique @map("steam_id")
+  discordId     String?        @unique @map("discord_id")
+  username      String?
+  avatarUrl     String?        @map("avatar_url")
+  role          UserRole       @default(user)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  transactions  Transaction[]
+  purchases     UserPurchase[]
+
+  @@map("users")
+}
+
+model Product {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  description      String?
+  priceCents       Int               @map("price_cents")
+  imageUrl         String?           @map("image_url")
+  category         String
+  durationDays     Int?              @map("duration_days")
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  transactionItems TransactionItem[]
+  userPurchases    UserPurchase[]
+
+  @@map("products")
+}
+
+model Transaction {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  status            TransactionStatus @default(pending)
+  totalAmountCents  Int               @map("total_amount_cents")
+  currency          String            @default("RUB")
+  paymentMethod     String?           @map("payment_method")
+  externalPaymentId String?           @map("external_payment_id")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items             TransactionItem[]
+  purchases         UserPurchase[]
+
+  @@map("transactions")
+  @@index([userId])
+  @@index([status])
+}
+
+model TransactionItem {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionId String      @map("transaction_id") @db.Uuid
+  productId     String      @map("product_id") @db.Uuid
+  priceCents    Int         @map("price_cents")
+  quantity      Int         @default(1)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("transaction_items")
+  @@index([transactionId])
+  @@index([productId])
+}
+
+model UserPurchase {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  productId     String       @map("product_id") @db.Uuid
+  transactionId String?      @map("transaction_id") @db.Uuid
+  startsAt      DateTime     @default(now()) @map("starts_at") @db.Timestamptz
+  expiresAt     DateTime?    @map("expires_at") @db.Timestamptz
+  isActive      Boolean      @default(true) @map("is_active")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product       Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("user_purchases")
+  @@index([userId])
+  @@index([productId])
+  @@index([isActive, expiresAt])
+}
